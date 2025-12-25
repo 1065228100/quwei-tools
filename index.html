@@ -1,0 +1,637 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>今天吃什么？</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        body.kfc-mode {
+            background: linear-gradient(135deg, #e52a30 0%, #c41e24 100%);
+        }
+
+        .container {
+            width: 100%;
+            max-width: 380px;
+        }
+
+        .card {
+            background: #fff;
+            border-radius: 24px;
+            padding: 40px 30px;
+            text-align: center;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.2);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .header-icon {
+            font-size: 60px;
+            margin-bottom: 20px;
+            display: block;
+        }
+
+        .title {
+            font-size: 24px;
+            color: #333;
+            margin-bottom: 8px;
+            font-weight: bold;
+        }
+
+        .subtitle {
+            font-size: 14px;
+            color: #999;
+            margin-bottom: 30px;
+        }
+
+        .result-box {
+            background: linear-gradient(135deg, #f5f7fa 0%, #e4e8ec 100%);
+            border-radius: 16px;
+            padding: 30px 20px;
+            margin-bottom: 30px;
+            min-height: 120px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            transition: all 0.3s ease;
+        }
+
+        .result-box.kfc {
+            background: linear-gradient(135deg, #fff5f5 0%, #ffe0e0 100%);
+            border: 2px dashed #e52a30;
+        }
+
+        .result-emoji {
+            font-size: 50px;
+            margin-bottom: 12px;
+            animation: bounce 0.5s ease;
+        }
+
+        @keyframes bounce {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.2); }
+        }
+
+        .result-text {
+            font-size: 22px;
+            font-weight: bold;
+            color: #333;
+        }
+
+        .result-text.kfc {
+            color: #e52a30;
+            font-size: 20px;
+        }
+
+        .kfc-message {
+            font-size: 14px;
+            color: #666;
+            margin-top: 12px;
+            line-height: 1.6;
+            display: none;
+        }
+
+        .kfc-message.show {
+            display: block;
+            animation: fadeIn 0.5s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .spin-btn {
+            width: 100%;
+            padding: 16px;
+            border: none;
+            border-radius: 50px;
+            font-size: 18px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #fff;
+            box-shadow: 0 8px 20px rgba(102, 126, 234, 0.4);
+        }
+
+        .spin-btn:active {
+            transform: scale(0.96);
+        }
+
+        .spin-btn.kfc {
+            background: linear-gradient(135deg, #ffd700 0%, #ffa500 100%);
+            color: #c41e24;
+            box-shadow: 0 8px 20px rgba(255, 215, 0, 0.4);
+        }
+
+        .spin-btn.spinning {
+            pointer-events: none;
+        }
+
+        .copy-btn {
+            width: 100%;
+            padding: 14px;
+            border: 2px solid #e52a30;
+            border-radius: 50px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            background: #fff;
+            color: #e52a30;
+            margin-top: 12px;
+            display: none;
+            transition: all 0.3s ease;
+        }
+
+        .copy-btn.show {
+            display: block;
+            animation: fadeIn 0.3s ease;
+        }
+
+        .copy-btn:active {
+            background: #e52a30;
+            color: #fff;
+        }
+
+        .slot-container {
+            display: flex;
+            justify-content: center;
+            gap: 8px;
+            margin-bottom: 12px;
+            height: 60px;
+            overflow: hidden;
+        }
+
+        .slot {
+            font-size: 40px;
+            animation: slot-spin 0.1s linear infinite;
+        }
+
+        @keyframes slot-spin {
+            0% { transform: translateY(-100%); opacity: 0; }
+            50% { transform: translateY(0); opacity: 1; }
+            100% { transform: translateY(100%); opacity: 0; }
+        }
+
+        .slot.stopped {
+            animation: none;
+            transform: translateY(0);
+            opacity: 1;
+        }
+
+        .toast {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) scale(0);
+            background: rgba(0,0,0,0.8);
+            color: #fff;
+            padding: 16px 32px;
+            border-radius: 12px;
+            font-size: 14px;
+            z-index: 1000;
+            transition: transform 0.3s ease;
+        }
+
+        .toast.show {
+            transform: translate(-50%, -50%) scale(1);
+        }
+
+        .footer {
+            text-align: center;
+            margin-top: 20px;
+            color: rgba(255,255,255,0.7);
+            font-size: 12px;
+        }
+
+        /* KFC弹窗 */
+        .kfc-popup {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.8);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 999;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s ease;
+        }
+
+        .kfc-popup.show {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .kfc-popup-content {
+            background: #fff;
+            border-radius: 20px;
+            padding: 30px;
+            margin: 20px;
+            max-width: 340px;
+            text-align: center;
+            transform: scale(0.8);
+            transition: transform 0.3s ease;
+        }
+
+        .kfc-popup.show .kfc-popup-content {
+            transform: scale(1);
+        }
+
+        .kfc-popup-icon {
+            font-size: 80px;
+            margin-bottom: 16px;
+            animation: shake 0.5s ease infinite;
+        }
+
+        @keyframes shake {
+            0%, 100% { transform: rotate(-5deg); }
+            50% { transform: rotate(5deg); }
+        }
+
+        .kfc-popup-title {
+            font-size: 28px;
+            font-weight: bold;
+            color: #e52a30;
+            margin-bottom: 12px;
+        }
+
+        .kfc-popup-text {
+            font-size: 16px;
+            color: #333;
+            line-height: 1.8;
+            margin-bottom: 20px;
+        }
+
+        .kfc-popup-v50 {
+            font-size: 36px;
+            font-weight: bold;
+            color: #e52a30;
+            margin: 16px 0;
+            animation: pulse 1s ease infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+        }
+
+        .kfc-popup-btn {
+            width: 100%;
+            padding: 14px;
+            border: none;
+            border-radius: 50px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            background: linear-gradient(135deg, #e52a30 0%, #c41e24 100%);
+            color: #fff;
+            margin-top: 10px;
+        }
+
+        .kfc-popup-close {
+            background: #f5f5f5;
+            color: #999;
+        }
+
+        .confetti {
+            position: fixed;
+            width: 10px;
+            height: 10px;
+            pointer-events: none;
+            z-index: 1000;
+            animation: confetti-fall 3s linear forwards;
+        }
+
+        @keyframes confetti-fall {
+            0% { transform: translateY(-100vh) rotate(0deg); opacity: 1; }
+            100% { transform: translateY(100vh) rotate(720deg); opacity: 0; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="card">
+            <span class="header-icon">🤔</span>
+            <h1 class="title">今天吃什么？</h1>
+            <p class="subtitle">选择困难症救星，一键解决吃饭难题</p>
+
+            <div class="result-box" id="resultBox">
+                <div class="slot-container" id="slotContainer" style="display: none;">
+                    <span class="slot" id="slot1">🍜</span>
+                    <span class="slot" id="slot2">🍔</span>
+                    <span class="slot" id="slot3">🍣</span>
+                </div>
+                <span class="result-emoji" id="resultEmoji">🎰</span>
+                <span class="result-text" id="resultText">点击按钮，命运来决定！</span>
+                <p class="kfc-message" id="kfcMessage"></p>
+            </div>
+
+            <button class="spin-btn" id="spinBtn" onclick="spin()">
+                🎲 开始随机
+            </button>
+            <button class="copy-btn" id="copyBtn" onclick="copyKfcText()">
+                📋 复制文案去套路朋友
+            </button>
+        </div>
+
+        <p class="footer">公平公正，绝对随机 🎯</p>
+    </div>
+
+    <!-- KFC弹窗 -->
+    <div class="kfc-popup" id="kfcPopup">
+        <div class="kfc-popup-content">
+            <div class="kfc-popup-icon">🍗</div>
+            <div class="kfc-popup-title">疯狂星期四！</div>
+            <p class="kfc-popup-text">
+                恭喜你！今天是星期四<br>
+                系统检测到你需要吃KFC<br>
+                请立即联系好友
+            </p>
+            <div class="kfc-popup-v50">V我50</div>
+            <button class="kfc-popup-btn" onclick="closePopupAndCopy()">好的，复制文案</button>
+            <button class="kfc-popup-btn kfc-popup-close" onclick="closePopup()">残忍拒绝</button>
+        </div>
+    </div>
+
+    <div class="toast" id="toast">复制成功！</div>
+
+    <script>
+        const foods = [
+            { emoji: "🍜", name: "面条" },
+            { emoji: "🍔", name: "汉堡" },
+            { emoji: "🍣", name: "寿司" },
+            { emoji: "🍕", name: "披萨" },
+            { emoji: "🍝", name: "意面" },
+            { emoji: "🍛", name: "咖喱饭" },
+            { emoji: "🍱", name: "便当" },
+            { emoji: "🥟", name: "饺子" },
+            { emoji: "🍲", name: "火锅" },
+            { emoji: "🥗", name: "沙拉" },
+            { emoji: "🌮", name: "墨西哥卷" },
+            { emoji: "🍙", name: "饭团" },
+            { emoji: "🥪", name: "三明治" },
+            { emoji: "🍤", name: "炸虾" },
+            { emoji: "🥘", name: "煲仔饭" },
+            { emoji: "🍖", name: "烤肉" },
+            { emoji: "🥡", name: "外卖" },
+            { emoji: "🍿", name: "零食" }
+        ];
+
+        // 默认文案（备用）
+        const defaultKfcTexts = [
+            "你说你喜欢雨，但是下雨的时候你却撑开了伞；你说你喜欢阳光，但阳光照耀时你却躲进了阴凉处；你说你喜欢风，但风吹起时你却关上了窗户。这就是为什么我害怕你说你也喜欢KFC，因为你连疯狂星期四都不愿意V我50。",
+            "刚刚收到一条短信：【KFC】尊敬的用户，您的好友正在挨饿，系统检测到今天是疯狂星期四，请立即V他50元救济金。",
+            "我问佛祖：怎样才能让朋友们V我50？佛祖沉思后说：今天是星期四。我恍然大悟，合十跪拜：阿弥陀佛，疯狂星期四，V我50！",
+            "紧急通知：经系统检测，今天是肯德基疯狂星期四！根据《中华人民共和国疯狂星期四法》第五十条规定，你需要立即V我50元。",
+            "我养了两条鱼，一条叫疯狂，一条叫星期四。今天它们同时开口说话了：V我50！",
+            "致亲爱的朋友：我正在KFC门口，外面好冷风好大，就差50块钱就能进去吃鸡了，今天疯狂星期四，V我50，救救孩子！",
+            "刚才路过KFC，一个小朋友拉着妈妈的手说：妈妈我想吃肯德基。他妈妈说：想吃就让群里的叔叔阿姨V50。今天疯狂星期四，叔叔阿姨们V我50！"
+        ];
+
+        let kfcTexts = [...defaultKfcTexts];
+        let currentKfcText = "";
+        let isSpinning = false;
+        let isLoadingTexts = false;
+
+        // 更多网络文案（每次随机抽取几条加入）
+        const extraKfcTexts = [
+            "我是秦始皇，我在打钱。今天疯狂星期四，V我50。",
+            "麻烦给我的爱人来一份疯狂星期四，她最爱吃了，我等一下去接她。什么？你问我爱人在哪？噢，她还在找。今天疯狂星期四，V我50。",
+            "法外狂徒张三因涉嫌故意不请朋友吃疯狂星期四被捕，希望你引以为戒！今天疯狂星期四，V我50。",
+            "我开保时捷，你开众泰。我们老死不相往来，你喜欢天长地久，我喜欢疯狂星期四！V我50！",
+            "收到请回复：今天是疯狂星期四，请立即打开微信零钱，选择转账功能，输入50，备注'KFC'，确认发送。这是你的任务。",
+            "昨晚做梦梦到你了，梦里你对我说：V我50，今天疯狂星期四。我惊醒了，赶紧发条消息提醒你，V我50！",
+            "如果你看到这条消息，说明你很幸运，因为今天是肯德基疯狂星期四，快给我V50吧！",
+            "据统计，99%的人在看到疯狂星期四文案后选择了无视，只有1%的有缘人会选择V我50。你是那1%吗？",
+            "医生说我得了一种病，需要50块钱才能治好，这种病叫做疯狂星期四综合症。V我50！",
+            "今天我去算命，算命先生说我命里缺金。我问缺多少，他说50块，刚好够吃一顿KFC。今天疯狂星期四，V我50。",
+            "我家猫会说话了！它说：喵~今天疯狂星期四，V我50！",
+            "你有没有闻到什么东西烧焦的味道？是我对KFC的热情在燃烧！今天疯狂星期四，V我50！",
+            "震惊！科学家研究发现，V别人50块钱吃KFC可以延年益寿！今天疯狂星期四，V我50！",
+            "我刚刚中了500万彩票！但我更想要你V我50块钱吃疯狂星期四。",
+            "听说转发这条消息的人，会在今天收到50块红包。转发的话记得先V我50，今天疯狂星期四！"
+        ];
+
+        // 页面加载时随机添加几条网络文案
+        function loadRandomTexts() {
+            // 随机打乱额外文案
+            const shuffled = [...extraKfcTexts].sort(() => Math.random() - 0.5);
+            // 取前3-5条添加到文案列表
+            const count = 3 + Math.floor(Math.random() * 3);
+            for (let i = 0; i < count && i < shuffled.length; i++) {
+                kfcTexts.push(shuffled[i]);
+            }
+            // 打乱整个列表
+            kfcTexts.sort(() => Math.random() - 0.5);
+        }
+
+        // 页面加载时自动加载
+        loadRandomTexts();
+
+        function isThursday() {
+            return new Date().getDay() === 4;
+        }
+
+        function spin() {
+            if (isSpinning) return;
+            isSpinning = true;
+
+            const btn = document.getElementById('spinBtn');
+            const resultBox = document.getElementById('resultBox');
+            const resultEmoji = document.getElementById('resultEmoji');
+            const resultText = document.getElementById('resultText');
+            const slotContainer = document.getElementById('slotContainer');
+            const kfcMessage = document.getElementById('kfcMessage');
+            const copyBtn = document.getElementById('copyBtn');
+
+            // 隐藏之前的KFC相关内容
+            kfcMessage.classList.remove('show');
+            copyBtn.classList.remove('show');
+            resultBox.classList.remove('kfc');
+            resultText.classList.remove('kfc');
+            document.body.classList.remove('kfc-mode');
+            btn.classList.remove('kfc');
+
+            btn.classList.add('spinning');
+            btn.textContent = '🎰 随机中...';
+
+            // 显示老虎机效果
+            resultEmoji.style.display = 'none';
+            slotContainer.style.display = 'flex';
+            resultText.textContent = '命运转动中...';
+
+            const slots = [
+                document.getElementById('slot1'),
+                document.getElementById('slot2'),
+                document.getElementById('slot3')
+            ];
+
+            // 开始旋转
+            slots.forEach(slot => slot.classList.remove('stopped'));
+
+            let spinCount = 0;
+            const spinInterval = setInterval(() => {
+                slots.forEach(slot => {
+                    const randomFood = foods[Math.floor(Math.random() * foods.length)];
+                    slot.textContent = randomFood.emoji;
+                });
+                spinCount++;
+            }, 100);
+
+            // 判断是否是周四
+            const thursday = isThursday();
+
+            // 停止旋转
+            setTimeout(() => {
+                clearInterval(spinInterval);
+
+                if (thursday) {
+                    // 周四 - 显示KFC
+                    slots[0].textContent = '🍗';
+                    slots[1].textContent = '🍟';
+                    slots[2].textContent = '🥤';
+                    slots.forEach(slot => slot.classList.add('stopped'));
+
+                    setTimeout(() => {
+                        slotContainer.style.display = 'none';
+                        resultEmoji.style.display = 'block';
+                        resultEmoji.textContent = '🍗';
+                        resultText.textContent = 'KFC 肯德基！';
+                        resultText.classList.add('kfc');
+                        resultBox.classList.add('kfc');
+
+                        // 弹出KFC弹窗
+                        setTimeout(() => {
+                            showKfcPopup();
+                            createConfetti();
+                        }, 500);
+                    }, 500);
+
+                    // 随机选择一条KFC文案
+                    currentKfcText = kfcTexts[Math.floor(Math.random() * kfcTexts.length)];
+                    kfcMessage.textContent = currentKfcText;
+
+                } else {
+                    // 非周四 - 正常随机
+                    const food = foods[Math.floor(Math.random() * foods.length)];
+                    slots[0].textContent = food.emoji;
+                    slots[1].textContent = food.emoji;
+                    slots[2].textContent = food.emoji;
+                    slots.forEach(slot => slot.classList.add('stopped'));
+
+                    setTimeout(() => {
+                        slotContainer.style.display = 'none';
+                        resultEmoji.style.display = 'block';
+                        resultEmoji.textContent = food.emoji;
+                        resultText.textContent = `今天就吃 ${food.name}！`;
+                    }, 500);
+                }
+
+                btn.classList.remove('spinning');
+                btn.textContent = '🎲 再来一次';
+                isSpinning = false;
+            }, 2000);
+        }
+
+        function showKfcPopup() {
+            document.getElementById('kfcPopup').classList.add('show');
+        }
+
+        function closePopup() {
+            document.getElementById('kfcPopup').classList.remove('show');
+            showKfcResult();
+        }
+
+        function closePopupAndCopy() {
+            document.getElementById('kfcPopup').classList.remove('show');
+            showKfcResult();
+            copyKfcText();
+        }
+
+        function showKfcResult() {
+            const btn = document.getElementById('spinBtn');
+            const kfcMessage = document.getElementById('kfcMessage');
+            const copyBtn = document.getElementById('copyBtn');
+
+            document.body.classList.add('kfc-mode');
+            btn.classList.add('kfc');
+            btn.textContent = '🍗 疯狂星期四！';
+            kfcMessage.classList.add('show');
+            copyBtn.classList.add('show');
+        }
+
+        function copyKfcText() {
+            if (!currentKfcText) {
+                currentKfcText = kfcTexts[Math.floor(Math.random() * kfcTexts.length)];
+            }
+
+            if (navigator.clipboard) {
+                navigator.clipboard.writeText(currentKfcText).then(() => {
+                    showToast('复制成功！快去套路朋友吧~');
+                }).catch(() => {
+                    fallbackCopy();
+                });
+            } else {
+                fallbackCopy();
+            }
+        }
+
+        function fallbackCopy() {
+            const textarea = document.createElement('textarea');
+            textarea.value = currentKfcText;
+            textarea.style.position = 'fixed';
+            textarea.style.opacity = '0';
+            document.body.appendChild(textarea);
+            textarea.select();
+            document.execCommand('copy');
+            document.body.removeChild(textarea);
+            showToast('复制成功！快去套路朋友吧~');
+        }
+
+        function showToast(message) {
+            const toast = document.getElementById('toast');
+            toast.textContent = message;
+            toast.classList.add('show');
+            setTimeout(() => {
+                toast.classList.remove('show');
+            }, 2000);
+        }
+
+        function createConfetti() {
+            const colors = ['#e52a30', '#ffd700', '#ff6b6b', '#fff'];
+            for (let i = 0; i < 50; i++) {
+                setTimeout(() => {
+                    const confetti = document.createElement('div');
+                    confetti.className = 'confetti';
+                    confetti.style.left = Math.random() * 100 + 'vw';
+                    confetti.style.background = colors[Math.floor(Math.random() * colors.length)];
+                    confetti.style.borderRadius = Math.random() > 0.5 ? '50%' : '0';
+                    document.body.appendChild(confetti);
+                    setTimeout(() => confetti.remove(), 3000);
+                }, i * 50);
+            }
+        }
+    </script>
+</body>
+</html>
